@@ -31,46 +31,60 @@ energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$to
 energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
 energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
 
+# NEED TO FIX -- Energy source may have a max of 0
+energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.max)]
+
 il_plants <- subset(energy, energy$state == "IL")
 
-# getColor <- function(plants) {
-#   sapply(plants, function(mag) {
-#     if (plants$coal > 0.0) {
-#         "#E41A1C"
-#     }
-#     else if (plants$oil > 0.0) {
-#         "#377EB8"
-#     }
-#     else if (plants$gas > 0.0) {
-#         "#4DAF4A"
-#     }
-#     else if (plants$nuclear > 0.0) {
-#         "#984EA3"
-#     }
-#     else if (plants$hydro > 0.0) {
-#         "#FF7F00"
-#     }
-#     else if (plants$biomass > 0.0) {
-#         "#111111"
-#     }
-#     else if (plants$wind > 0.0) {
-#         "#A65628"
-#     }
-#     else if (plants$solar > 0.0) {
-#         "#F781BF"
-#     }
-#     else if (plants$geothermal > 0.0) {
-#         "#999999"
-#     }
-#     else if (plants$other > 0.0) {
-#         "#FF2233"
-#     }
-#   })
-# }
+getColor <- function(plants) {
+  res <- sapply(plants$dominant_source, function(dominant) {
+    if (dominant == "coal") {
+        "red"
+    }
+    else if (dominant == "oil") {
+        "black"
+    }
+    else if (dominant == "gas") {
+        "green"
+    }
+    else if (dominant == "nuclear") {
+        "purple"
+    }
+    else if (dominant == "hydro") {
+        "blue"
+    }
+    else if (dominant == "biomass") {
+        "orange"
+    }
+    else if (dominant == "wind") {
+        "white"
+    }
+    else if (dominant == "solar") {
+        "yellow"
+    }
+    else if (dominant == "geothermal") {
+        "magenta"
+    }
+    else if (dominant == "other") {
+        "magenta"
+    }
+    else {
+      "magenta"
+    }
+  })
 
-# pal <- colorFactor(c("navy", "red"), domain = c("ship", "pirate"))
-pal <- colorFactor(c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#111111","#A65628","#F781BF","#999999","#FF2233"), domain=c("coal","oil","gas","nuclear","hydro","biomass","wind","solar","geothermal","other"))
+  names(res) <- NULL
+  res
+}
 
+icons <- awesomeIcons(
+  icon = 'ios-close',
+  iconColor = 'black',
+  library = 'ion',
+  markerColor = getColor(il_plants)
+)
+
+# pal <- colorFactor(c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#111111","#A65628","#F781BF","#999999","#FF2233"), domain=c("coal","oil","gas","nuclear","hydro","biomass","wind","solar","geothermal","other"))
 
 ui <- fluidPage(
     title = "CS 424: Project 2",
@@ -88,16 +102,10 @@ server <- function(input, output, session) {
 
   output$testMap <- renderLeaflet({
     leaflet() %>%
-        addProviderTiles(providers$Stamen.TonerLite,
+        addProviderTiles(providers$OpenStreetMap.Mapnik,
           options = providerTileOptions(noWrap = TRUE)
         ) %>%
-        addCircleMarkers(
-          lng=il_plants$plant_longitude,
-          lat=il_plants$plant_latitude,
-          color = ~pal(type),
-          stroke = FALSE
-        )
-      # addMarkers(lng=il_plants$plant_longitude, lat=il_plants$plant_latitude, popup=il_plants$plant_name)
+        addAwesomeMarkers(lng=il_plants$plant_longitude, lat=il_plants$plant_latitude, icon=icons, popup=paste(il_plants$plant_name, "<br/>", il_plants$dominant_source))
   })
 }
 
