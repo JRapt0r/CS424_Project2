@@ -1,3 +1,6 @@
+# Jonathon Repta
+# CS 424 Project 2
+
 # Load libraries
 library(shiny)
 library(shinydashboard)
@@ -17,7 +20,7 @@ energy$renewable <- energy$hydro+energy$biomass+energy$wind+energy$solar+energy$
 energy$non_renewable <- energy$coal+energy$oil+energy$gas+energy$nuclear+energy$other
 
 # Calculate percent of total columns
-energy$percent_coal <- ifelse(energy$total == 0, 0.0, (energy$coal/energy$total) * 100 )
+energy$percent_coal <- ifelse(energy$total == 0, 0.0, (energy$coal / energy$total) * 100 )
 energy$percent_oil <- ifelse(energy$total == 0, 0.0, (energy$oil / energy$total) * 100)
 energy$percent_gas <- ifelse(energy$total == 0, 0.0, (energy$gas / energy$total) * 100)
 energy$percent_nuclear <- ifelse(energy$total == 0, 0.0, (energy$nuclear / energy$total) * 100)
@@ -31,10 +34,14 @@ energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$to
 energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
 energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
 
-# NEED TO FIX -- Energy source may have a max of 0
+# NEED TO FIX -- Doesn't handle multiple energy sources
 energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.max)]
 
+# Filter for Illinois energy plants
 il_plants <- subset(energy, energy$state == "IL")
+
+# Filter plants that don't generate any energy
+il_plants <- rbind( subset(il_plants, percent_renewable > 0), subset(il_plants, percent_non_renewable > 0) )
 
 getColor <- function(plants) {
   res <- sapply(plants$dominant_source, function(dominant) {
@@ -64,8 +71,8 @@ ui <- fluidPage(
     p(),
     navbarPage("Project 2", position = c("static-top"), collapsible = FALSE, fluid = TRUE,
       tabPanel("Map",
-        fluidRow(
-          column(1,
+        sidebarLayout(
+          sidebarPanel(width=2,
             checkboxInput("checkbox_all", "All", TRUE),
             checkboxInput("checkbox_coal", "Coal", FALSE),
             checkboxInput("checkbox_oil", "Oil", FALSE),
@@ -81,7 +88,7 @@ ui <- fluidPage(
             checkboxInput("checkbox_renewable", "Renewable", FALSE),
             actionButton("resetButton", "Reset Map")
           ),
-          column(11, leafletOutput("testMap", height="calc(100vh - 200px)") )
+          mainPanel(width=10, leafletOutput("testMap", height="calc(100vh - 95px)") )
         )
       ),
       tabPanel("About",
@@ -94,6 +101,76 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
+  # Reset button
+  observeEvent(input$resetButton, {
+    updateCheckboxInput(
+      inputId = "checkbox_all",
+      session = session,
+      value = TRUE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_coal",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_oil",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_gas",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_nuclear",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_hydro",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_biomass",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_wind",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_solar",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_geothermal",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_other",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_non_renewable",
+      session = session,
+      value = FALSE
+    )
+    updateCheckboxInput(
+      inputId = "checkbox_renewable",
+      session = session,
+      value = FALSE
+    )
+  })
+
+  # Handle map marker colors
   reactiveIcons <- reactive({
     awesomeIcons(
       icon = 'ios-close',
@@ -103,11 +180,13 @@ server <- function(input, output, session) {
     )
   })
 
+  # Create label for markers
   determineLabel <- reactive({
     active <- activeEnergySources()
     paste("<b>", active$plant_name, "</b>", "<br/>", active$dominant)
   })
 
+  # Handle filtering of energy types
   activeEnergySources <- reactive({
     toReturn <- NULL
 
@@ -166,6 +245,7 @@ server <- function(input, output, session) {
     toReturn
   })
 
+  # Create map
   output$testMap <- renderLeaflet({
     leaflet() %>%
         addProviderTiles(providers$OpenStreetMap.Mapnik,
@@ -185,7 +265,6 @@ server <- function(input, output, session) {
             opacity = 1
         )
   })
-
 
   # About page
   output$name <- renderPrint({
