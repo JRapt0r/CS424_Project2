@@ -38,74 +38,164 @@ il_plants <- subset(energy, energy$state == "IL")
 
 getColor <- function(plants) {
   res <- sapply(plants$dominant_source, function(dominant) {
-    if (dominant == "coal") {
-        "red"
-    }
-    else if (dominant == "oil") {
-        "black"
-    }
-    else if (dominant == "gas") {
-        "green"
-    }
-    else if (dominant == "nuclear") {
-        "purple"
-    }
-    else if (dominant == "hydro") {
-        "blue"
-    }
-    else if (dominant == "biomass") {
-        "orange"
-    }
-    else if (dominant == "wind") {
-        "white"
-    }
-    else if (dominant == "solar") {
-        "yellow"
-    }
-    else if (dominant == "geothermal") {
-        "magenta"
-    }
-    else if (dominant == "other") {
-        "magenta"
-    }
-    else {
-      "magenta"
-    }
+    if (dominant == "coal") { "red" }
+    else if (dominant == "oil") { "black" }
+    else if (dominant == "gas") { "green" }
+    else if (dominant == "nuclear") { "purple" }
+    else if (dominant == "hydro") { "blue" }
+    else if (dominant == "biomass") { "orange" }
+    else if (dominant == "wind") { "white" }
+    else if (dominant == "solar") { "beige" }
+    else if (dominant == "geothermal") { "darkpurple" }
+    else if (dominant == "other") { "lightgray" }
+    else { "cadetblue" } # shouldn't reach this case
   })
 
   names(res) <- NULL
   res
 }
 
-icons <- awesomeIcons(
-  icon = 'ios-close',
-  iconColor = 'black',
-  library = 'ion',
-  markerColor = getColor(il_plants)
-)
-
-# pal <- colorFactor(c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#111111","#A65628","#F781BF","#999999","#FF2233"), domain=c("coal","oil","gas","nuclear","hydro","biomass","wind","solar","geothermal","other"))
+pal <- colorFactor(c("orange","red","green","#800080","blue","purple","black","lightgray","beige","white"),
+            domain=c("coal","oil","gas","nuclear","hydro","biomass","wind","solar","geothermal","other"))
 
 ui <- fluidPage(
     title = "CS 424: Project 2",
     lang="en",
     p(),
     navbarPage("Project 2", position = c("static-top"), collapsible = FALSE, fluid = TRUE,
-        tabPanel("Map",
-            leafletOutput("testMap", height="calc(100vh - 78px)"),
+      tabPanel("Map",
+        fluidRow(
+          column(1,
+            checkboxInput("checkbox_all", "All", TRUE),
+            checkboxInput("checkbox_coal", "Coal", FALSE),
+            checkboxInput("checkbox_oil", "Oil", FALSE),
+            checkboxInput("checkbox_gas", "Gas", FALSE),
+            checkboxInput("checkbox_nuclear", "Nuclear", FALSE),
+            checkboxInput("checkbox_hydro", "Hydro", FALSE),
+            checkboxInput("checkbox_biomass", "Biomass", FALSE),
+            checkboxInput("checkbox_wind", "Wind", FALSE),
+            checkboxInput("checkbox_solar", "Solar", FALSE),
+            checkboxInput("checkbox_geothermal", "Geothermal", FALSE),
+            checkboxInput("checkbox_other", "Other", FALSE),
+            checkboxInput("checkbox_non_renewable", "Non renewable", FALSE),
+            checkboxInput("checkbox_renewable", "Renewable", FALSE),
+            actionButton("resetButton", "Reset Map")
+          ),
+          column(11, leafletOutput("testMap", height="calc(100vh - 200px)") )
         )
+      ),
+      tabPanel("About",
+        verbatimTextOutput("name"),
+        verbatimTextOutput("date"),
+        verbatimTextOutput("dataset")
+      )
     )
 )
 
 server <- function(input, output, session) {
-  points <- eventReactive(input$recalc, { cbind(rnorm(40) * 2 + 13, rnorm(40) + 48)}, ignoreNULL = FALSE)
+
+  reactiveIcons <- reactive({
+    awesomeIcons(
+      icon = 'ios-close',
+      iconColor = 'black',
+      library = 'ion',
+      markerColor = getColor(activeEnergySources())
+    )
+  })
+
+  determineLabel <- reactive({
+    active <- activeEnergySources()
+    paste("<b>", active$plant_name, "</b>", "<br/>", active$dominant)
+  })
+
+  activeEnergySources <- reactive({
+    toReturn <- NULL
+
+    if (input$checkbox_all)
+    {
+      toReturn <- il_plants
+    }
+    else
+    {
+      if (input$checkbox_coal) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "coal"))
+      }
+      if (input$checkbox_oil) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "oil"))
+      }
+      if (input$checkbox_gas) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "gas"))
+      }
+      if (input$checkbox_nuclear) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "nuclear"))
+      }
+      if (input$checkbox_hydro) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "hydro"))
+      }
+      if (input$checkbox_biomass) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "biomass"))
+      }
+      if (input$checkbox_wind) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "wind"))
+      }
+      if (input$checkbox_solar) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "solar"))
+      }
+      if (input$checkbox_geothermal) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "geothermal"))
+      }
+      if (input$checkbox_other) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "other"))
+      }
+      if (input$checkbox_non_renewable) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "coal"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "oil"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "gas"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "nuclear"))
+      }
+      if (input$checkbox_renewable) {
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "hydro"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "biomass"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "wind"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "solar"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "geothermal"))
+        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "other"))
+      }
+    }
+
+    toReturn
+  })
 
   output$testMap <- renderLeaflet({
     leaflet() %>%
         addProviderTiles(providers$OpenStreetMap.Mapnik,
           options = providerTileOptions(noWrap = TRUE)
         ) %>%
-        addAwesomeMarkers(lng=il_plants$plant_longitude, lat=il_plants$plant_latitude, icon=icons, popup=paste(il_plants$plant_name, "<br/>", il_plants$dominant_source))
+        addAwesomeMarkers(data=activeEnergySources(),
+          lng=~plant_longitude,
+          lat=~plant_latitude,
+          icon=reactiveIcons(),
+          popup=determineLabel()
+        ) %>%
+        addLegend("bottomright",
+            pal = pal,
+            values = names(il_plants)[5:14],
+            title = "Energy Source",
+            # labFormat = labelFormat(prefix = "$"),
+            opacity = 1
+        )
+  })
+
+
+  # About page
+  output$name <- renderPrint({
+    "Created by: Jonathon Repta"
+  })
+  output$date <- renderPrint({
+    "Created on: March 14, 2021"
+  })
+  output$dataset <- renderPrint({
+    "Data from: https://www.epa.gov/egrid/download-data, eGRID2018v2 Data File (XLSX)"
   })
 }
 
