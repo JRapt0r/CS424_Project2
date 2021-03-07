@@ -34,14 +34,16 @@ energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$to
 energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
 energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
 
+# Filter plants that don't generate any energy
+energy <- rbind( subset(energy, percent_renewable > 0), subset(energy, percent_non_renewable > 0) )
+
 # NEED TO FIX -- Doesn't handle multiple energy sources
 energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.max)]
 
 # Filter for Illinois energy plants
 il_plants <- subset(energy, energy$state == "IL")
+az_plants <- subset(energy, energy$state == "AZ")
 
-# Filter plants that don't generate any energy
-il_plants <- rbind( subset(il_plants, percent_renewable > 0), subset(il_plants, percent_non_renewable > 0) )
 
 getColor <- function(plants) {
   res <- sapply(plants$dominant_source, function(dominant) {
@@ -88,7 +90,128 @@ ui <- fluidPage(
             checkboxInput("checkbox_renewable", "Renewable", FALSE),
             actionButton("resetButton", "Reset Map")
           ),
-          mainPanel(width=10, leafletOutput("testMap", height="calc(100vh - 95px)") )
+          mainPanel(width=10,
+            fluidPage(
+              column(6,
+                fluidRow(column(6,
+                  selectInput(inputId="stateSelect1", width="100%", label="State", choices=
+                  c("Alabama" = "AL",
+                  "Alaska" = "AK",
+                  "Arizona" = "AZ",
+                  "Arkansas" = "AR",
+                  "California" = "CA",
+                  "Colorado" = "CO",
+                  "Connecticut" = "CT",
+                  "Delaware" = "DE",
+                  "Florida" = "FL",
+                  "Georgia" = "GA",
+                  "Hawaii" = "HI",
+                  "Idaho" = "ID",
+                  "Illinois" = "IL",
+                  "Indiana" = "IN",
+                  "Iowa" = "IA",
+                  "Kansas" = "KS",
+                  "Kentucky" = "KY",
+                  "Louisiana" = "LA",
+                  "Maine" = "ME",
+                  "Maryland" = "MD",
+                  "Massachusetts" = "MA",
+                  "Michigan" = "MI",
+                  "Minnesota" = "MN",
+                  "Mississippi" = "MS",
+                  "Missouri" = "MO",
+                  "Montana" = "MT",
+                  "Nebraska" = "NE",
+                  "Nevada" = "NV",
+                  "New Hampshire" = "NH",
+                  "New Jersey" = "NJ",
+                  "New Mexico" = "NM",
+                  "New York" = "NY",
+                  "North Carolina" = "NC",
+                  "North Dakota" = "ND",
+                  "Ohio" = "OH",
+                  "Oklahoma" = "OK",
+                  "Oregon" = "OR",
+                  "Pennsylvania" = "PA",
+                  "Rhode Island" = "RI",
+                  "South Carolina" = "SC",
+                  "South Dakota" = "SD",
+                  "Tennessee" = "TN",
+                  "Texas" = "TX",
+                  "Utah" = "UT",
+                  "Vermont" = "VT",
+                  "Virginia" = "VA",
+                  "Washington" = "WA",
+                  "West Virginia" = "WV",
+                  "Wisconsin" = "WI",
+                  "Wyoming" = "WY",
+                  "Washington DC" = "DC"),
+                  selected="IL")),
+                  column(6,selectInput("yearSelect", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2000, width="100%"))
+                ),
+                leafletOutput("testMap", height="calc(100vh - 200px)")
+              ),
+              column(6,
+                fluidRow(column(6,
+                  selectInput(inputId="stateSelect2", width="100%", label="State", choices=
+                  c("Alabama" = "AL",
+                  "Alaska" = "AK",
+                  "Arizona" = "AZ",
+                  "Arkansas" = "AR",
+                  "California" = "CA",
+                  "Colorado" = "CO",
+                  "Connecticut" = "CT",
+                  "Delaware" = "DE",
+                  "Florida" = "FL",
+                  "Georgia" = "GA",
+                  "Hawaii" = "HI",
+                  "Idaho" = "ID",
+                  "Illinois" = "IL",
+                  "Indiana" = "IN",
+                  "Iowa" = "IA",
+                  "Kansas" = "KS",
+                  "Kentucky" = "KY",
+                  "Louisiana" = "LA",
+                  "Maine" = "ME",
+                  "Maryland" = "MD",
+                  "Massachusetts" = "MA",
+                  "Michigan" = "MI",
+                  "Minnesota" = "MN",
+                  "Mississippi" = "MS",
+                  "Missouri" = "MO",
+                  "Montana" = "MT",
+                  "Nebraska" = "NE",
+                  "Nevada" = "NV",
+                  "New Hampshire" = "NH",
+                  "New Jersey" = "NJ",
+                  "New Mexico" = "NM",
+                  "New York" = "NY",
+                  "North Carolina" = "NC",
+                  "North Dakota" = "ND",
+                  "Ohio" = "OH",
+                  "Oklahoma" = "OK",
+                  "Oregon" = "OR",
+                  "Pennsylvania" = "PA",
+                  "Rhode Island" = "RI",
+                  "South Carolina" = "SC",
+                  "South Dakota" = "SD",
+                  "Tennessee" = "TN",
+                  "Texas" = "TX",
+                  "Utah" = "UT",
+                  "Vermont" = "VT",
+                  "Virginia" = "VA",
+                  "Washington" = "WA",
+                  "West Virginia" = "WV",
+                  "Wisconsin" = "WI",
+                  "Wyoming" = "WY",
+                  "Washington DC" = "DC"),
+                  selected="IL")),
+                  column(6,selectInput("yearSelect2", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2018, width="100%"))
+                ),
+                leafletOutput("testMap2", height="calc(100vh - 200px)")
+              )
+            )
+          )
         )
       ),
       tabPanel("About",
@@ -180,65 +303,143 @@ server <- function(input, output, session) {
     )
   })
 
+  reactiveIcons2 <- reactive({
+    awesomeIcons(
+      icon = 'ios-close',
+      iconColor = 'black',
+      library = 'ion',
+      markerColor = getColor(activeEnergySources2())
+    )
+  })
+
   # Create label for markers
   determineLabel <- reactive({
     active <- activeEnergySources()
-    paste("<b>", active$plant_name, "</b>", "<br/>", active$dominant)
+    paste("<b>", active$plant_name, "</b>",
+          "<br/>", active$dominant,"<br/>",
+          "Total capacity:" , active$total,"<br/>",
+          "Percent renewable:" , active$percent_renewable,"<br/>",
+          "Percent non-renewable:", active$percent_non_renewable)
+  })
+
+  determineLabel2 <- reactive({
+    active <- activeEnergySources2()
+    paste("<b>", active$plant_name, "</b>",
+          "<br/>", active$dominant,"<br/>",
+          "Total capacity:" , active$total,"<br/>",
+          "Percent renewable:" , active$percent_renewable,"<br/>",
+          "Percent non-renewable:", active$percent_non_renewable)
   })
 
   # Handle filtering of energy types
   activeEnergySources <- reactive({
+    selectedState <- subset(energy, energy$state == input$stateSelect1)
     toReturn <- NULL
 
-    if (input$checkbox_all)
-    {
-      toReturn <- il_plants
+    if (input$checkbox_all) {
+      toReturn <- selectedState
     }
-    else
-    {
+    else {
       if (input$checkbox_coal) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "coal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
       }
       if (input$checkbox_oil) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "oil"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
       }
       if (input$checkbox_gas) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "gas"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
       }
       if (input$checkbox_nuclear) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "nuclear"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
       }
       if (input$checkbox_hydro) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "hydro"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
       }
       if (input$checkbox_biomass) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "biomass"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
       }
       if (input$checkbox_wind) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "wind"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
       }
       if (input$checkbox_solar) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "solar"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
       }
       if (input$checkbox_geothermal) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "geothermal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
       }
       if (input$checkbox_other) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "other"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
       }
       if (input$checkbox_non_renewable) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "coal"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "oil"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "gas"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "nuclear"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
       }
       if (input$checkbox_renewable) {
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "hydro"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "biomass"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "wind"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "solar"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "geothermal"))
-        toReturn <- rbind(toReturn, subset(il_plants, il_plants$dominant_source == "other"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
+      }
+    }
+
+    toReturn
+  })
+
+  activeEnergySources2 <- reactive({
+    selectedState <- subset(energy, energy$state == input$stateSelect2)
+    toReturn <- NULL
+
+    if (input$checkbox_all) {
+      toReturn <- selectedState
+    }
+    else {
+      if (input$checkbox_coal) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
+      }
+      if (input$checkbox_oil) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
+      }
+      if (input$checkbox_gas) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
+      }
+      if (input$checkbox_nuclear) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
+      }
+      if (input$checkbox_hydro) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
+      }
+      if (input$checkbox_biomass) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
+      }
+      if (input$checkbox_wind) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
+      }
+      if (input$checkbox_solar) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
+      }
+      if (input$checkbox_geothermal) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
+      }
+      if (input$checkbox_other) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
+      }
+      if (input$checkbox_non_renewable) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
+      }
+      if (input$checkbox_renewable) {
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
+        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
       }
     }
 
@@ -248,22 +449,40 @@ server <- function(input, output, session) {
   # Create map
   output$testMap <- renderLeaflet({
     leaflet() %>%
-        addProviderTiles(providers$OpenStreetMap.Mapnik,
-          options = providerTileOptions(noWrap = TRUE)
-        ) %>%
-        addAwesomeMarkers(data=activeEnergySources(),
-          lng=~plant_longitude,
-          lat=~plant_latitude,
-          icon=reactiveIcons(),
-          popup=determineLabel()
-        ) %>%
-        addLegend("bottomright",
-            pal = pal,
-            values = names(il_plants)[5:14],
-            title = "Energy Source",
-            # labFormat = labelFormat(prefix = "$"),
-            opacity = 1
-        )
+      addProviderTiles(providers$OpenStreetMap.Mapnik,
+        options = providerTileOptions(noWrap = TRUE)
+      ) %>%
+      addAwesomeMarkers(data=activeEnergySources(),
+        lng=~plant_longitude,
+        lat=~plant_latitude,
+        icon=reactiveIcons(),
+        popup=determineLabel()
+      ) %>%
+      addLegend("bottomright",
+          pal = pal,
+          values = names(il_plants)[5:14],
+          title = "Energy Source",
+          opacity = 1
+      )
+  })
+
+  output$testMap2 <- renderLeaflet({
+    leaflet() %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik,
+        options = providerTileOptions(noWrap = TRUE)
+      ) %>%
+      addAwesomeMarkers(data=activeEnergySources2(),
+        lng=~plant_longitude,
+        lat=~plant_latitude,
+        icon=reactiveIcons2(),
+        popup=determineLabel2()
+      ) %>%
+      addLegend("bottomright",
+          pal = pal,
+          values = names(il_plants)[5:14],
+          title = "Energy Source",
+          opacity = 1
+      )
   })
 
   # About page
