@@ -8,6 +8,7 @@ library(ggplot2)
 library(plyr)
 library(leaflet)
 library(stringr)
+library(leaflet.providers)
 
 # Read in compressed data
 energy <- read.csv(file = "data/formatted.csv", sep = ",", header=TRUE)
@@ -34,6 +35,20 @@ energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$to
 energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
 energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
 
+# Determine size groupings
+sml <- unname(quantile(subset(energy, energy$total > 0)$total))
+small <- sml[2:2]
+med <- sml[3:3]
+large <- sml[4:4]
+
+# Create marker sizes
+energy$marker_size <- sapply(energy$total, function(total) {
+    if (total >= large) { 20 }
+    else if (total >= med) { 15 }
+    else if (total >= small) { 10 }
+    else { 5 }
+})
+
 # Filter plants that don't generate any energy
 energy <- rbind( subset(energy, percent_renewable > 0), subset(energy, percent_non_renewable > 0) )
 
@@ -42,8 +57,6 @@ energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.ma
 
 # Filter for Illinois energy plants
 il_plants <- subset(energy, energy$state == "IL")
-az_plants <- subset(energy, energy$state == "AZ")
-
 
 getColor <- function(plants) {
   res <- sapply(plants$dominant_source, function(dominant) {
@@ -64,7 +77,7 @@ getColor <- function(plants) {
   res
 }
 
-pal <- colorFactor(c("orange","red","green","#800080","blue","purple","black","lightgray","beige","white"),
+pal <- colorFactor(c("#00AB66","#36454F","#5E548D","#DBA480","#8CACD6","#A52A2A","#3D0C02","#C88CA4","#F5D68F","#D7DFD8"),
             domain=c("coal","oil","gas","nuclear","hydro","biomass","wind","solar","geothermal","other"))
 
 ui <- fluidPage(
@@ -149,7 +162,22 @@ ui <- fluidPage(
                   selected="IL")),
                   column(6,selectInput("yearSelect", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2000, width="100%"))
                 ),
-                leafletOutput("testMap", height="calc(100vh - 200px)")
+                leafletOutput("testMap", height="calc(100vh - 245px)"),
+                checkboxGroupInput(inputId="checkboxGroup",label="Test",inline=TRUE, width="100%", choices =
+                  c("All" = "checkbox_all",
+                    "Coal" = "checkbox_coal",
+                    "Oil" = "checkbox_oil",
+                    "Gas" = "checkbox_gas",
+                    "Nuclear" = "checkbox_nuclear",
+                    "Hydro" = "checkbox_hydro",
+                    "Biomass" = "checkbox_biomass",
+                    "Wind" = "checkbox_wind",
+                    "Solar" = "checkbox_solar",
+                    "Geothermal" = "checkbox_geothermal",
+                    "Other" = "checkbox_other",
+                    "Non renewable" = "checkbox_non_renewable",
+                    "Renewable" = "checkbox_renewable")
+                )
               ),
               column(6,
                 fluidRow(column(6,
@@ -208,7 +236,22 @@ ui <- fluidPage(
                   selected="IL")),
                   column(6,selectInput("yearSelect2", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2018, width="100%"))
                 ),
-                leafletOutput("testMap2", height="calc(100vh - 200px)")
+                leafletOutput("testMap2", height="calc(100vh - 245px)"),
+                checkboxGroupInput(inputId="checkboxGroup",label="Test",inline=TRUE, width="100%", choices =
+                  c("All" = "checkbox_all",
+                    "Coal" = "checkbox_coal",
+                    "Oil" = "checkbox_oil",
+                    "Gas" = "checkbox_gas",
+                    "Nuclear" = "checkbox_nuclear",
+                    "Hydro" = "checkbox_hydro",
+                    "Biomass" = "checkbox_biomass",
+                    "Wind" = "checkbox_wind",
+                    "Solar" = "checkbox_solar",
+                    "Geothermal" = "checkbox_geothermal",
+                    "Other" = "checkbox_other",
+                    "Non renewable" = "checkbox_non_renewable",
+                    "Renewable" = "checkbox_renewable")
+                )
               )
             )
           )
@@ -448,40 +491,70 @@ server <- function(input, output, session) {
 
   # Create map
   output$testMap <- renderLeaflet({
-    leaflet() %>%
+    leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
       addProviderTiles(providers$OpenStreetMap.Mapnik,
         options = providerTileOptions(noWrap = TRUE)
       ) %>%
-      addAwesomeMarkers(data=activeEnergySources(),
+      addProviderTiles(providers$Esri.DeLorme, group = "Esri DeLorme") %>%
+      addProviderTiles(providers$TomTom.Hybrid, group = "TomTom Hybrid") %>%
+      addCircleMarkers(
+        data=activeEnergySources(),
+        radius=~marker_size,
         lng=~plant_longitude,
         lat=~plant_latitude,
-        icon=reactiveIcons(),
-        popup=determineLabel()
+        color = ~pal(dominant_source),
+        popup=determineLabel(),
+        stroke = TRUE, fillOpacity = 0.75
       ) %>%
+      # addAwesomeMarkers(data=activeEnergySources(),
+      #   lng=~plant_longitude,
+      #   lat=~plant_latitude,
+      #   icon=reactiveIcons(),
+      #   popup=determineLabel()
+      # ) %>%
       addLegend("bottomright",
           pal = pal,
           values = names(il_plants)[5:14],
           title = "Energy Source",
           opacity = 1
+      ) %>%
+      addLayersControl(
+        baseGroups = c("OSM", "Esri DeLorme", "TomTom Hybrid"),
+        options = layersControlOptions(collapsed = FALSE)
       )
   })
 
   output$testMap2 <- renderLeaflet({
-    leaflet() %>%
+    leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
       addProviderTiles(providers$OpenStreetMap.Mapnik,
         options = providerTileOptions(noWrap = TRUE)
       ) %>%
-      addAwesomeMarkers(data=activeEnergySources2(),
+      addProviderTiles(providers$Esri.DeLorme, group = "Esri DeLorme") %>%
+      addProviderTiles(providers$TomTom.Hybrid, group = "TomTom Hybrid") %>%
+      addCircleMarkers(
+        data=activeEnergySources2(),
+        radius=~marker_size,
         lng=~plant_longitude,
         lat=~plant_latitude,
-        icon=reactiveIcons2(),
-        popup=determineLabel2()
+        color = ~pal(dominant_source),
+        popup=determineLabel2(),
+        stroke = TRUE, fillOpacity = 0.75
       ) %>%
+      # addAwesomeMarkers(data=activeEnergySources2(),
+      #   lng=~plant_longitude,
+      #   lat=~plant_latitude,
+      #   icon=reactiveIcons2(),
+      #   popup=determineLabel2()
+      # ) %>%
       addLegend("bottomright",
           pal = pal,
           values = names(il_plants)[5:14],
           title = "Energy Source",
           opacity = 1
+      ) %>%
+      addLayersControl(
+        baseGroups = c("OSM", "Esri DeLorme", "TomTom Hybrid"),
+        options = layersControlOptions(collapsed = FALSE)
       )
   })
 
