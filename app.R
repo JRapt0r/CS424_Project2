@@ -11,52 +11,64 @@ library(stringr)
 library(leaflet.providers)
 
 # Read in compressed data
-energy <- read.csv(file = "data/formatted.csv", sep = ",", header=TRUE)
-# Give proper names to the columns
-names(energy) <- c("state", "plant_name", "plant_latitude", "plant_longitude", "coal", "oil", "gas", "nuclear", "hydro", "biomass", "wind", "solar", "geothermal", "other")
+energy_2000 <- read.csv(file = "data/egrid_2000_formatted.csv", sep = ",", header=TRUE)
+energy_2010 <- read.csv(file = "data/egrid_2010_formatted.csv", sep = ",", header=TRUE)
+energy_2018 <- read.csv(file = "data/egrid_2018_formatted.csv", sep = ",", header=TRUE)
 
-# Calculate other columns
-energy$total <- energy$coal+energy$oil+energy$gas+energy$nuclear+energy$hydro+energy$biomass+energy$wind+energy$solar+energy$geothermal+energy$other
-energy$renewable <- energy$hydro+energy$biomass+energy$wind+energy$solar+energy$geothermal
-energy$non_renewable <- energy$coal+energy$oil+energy$gas+energy$nuclear+energy$other
+computeRows <- function(energy) {
+  # Give proper names to the columns
+  names(energy) <- c("state", "plant_name", "plant_latitude", "plant_longitude", "coal", "oil", "gas", "nuclear", "hydro", "biomass", "wind", "solar", "geothermal", "other")
 
-# Calculate percent of total columns
-energy$percent_coal <- ifelse(energy$total == 0, 0.0, (energy$coal / energy$total) * 100 )
-energy$percent_oil <- ifelse(energy$total == 0, 0.0, (energy$oil / energy$total) * 100)
-energy$percent_gas <- ifelse(energy$total == 0, 0.0, (energy$gas / energy$total) * 100)
-energy$percent_nuclear <- ifelse(energy$total == 0, 0.0, (energy$nuclear / energy$total) * 100)
-energy$percent_hydro <- ifelse(energy$total == 0, 0.0, (energy$hydro / energy$total) * 100)
-energy$percent_biomass <- ifelse(energy$total == 0, 0.0, (energy$biomass / energy$total) * 100)
-energy$percent_wind <- ifelse(energy$total == 0, 0.0, (energy$wind / energy$total) * 100)
-energy$percent_solar <- ifelse(energy$total == 0, 0.0, (energy$solar / energy$total) * 100)
-energy$percent_geothermal <- ifelse(energy$total == 0, 0.0, (energy$geothermal / energy$total) * 100)
-energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$total) * 100)
+  # Calculate other columns
+  energy$total <- energy$coal+energy$oil+energy$gas+energy$nuclear+energy$hydro+energy$biomass+energy$wind+energy$solar+energy$geothermal+energy$other
+  energy$renewable <- energy$hydro+energy$biomass+energy$wind+energy$solar+energy$geothermal
+  energy$non_renewable <- energy$coal+energy$oil+energy$gas+energy$nuclear+energy$other
 
-energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
-energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
+  # Calculate percent of total columns
+  energy$percent_coal <- ifelse(energy$total == 0, 0.0, (energy$coal / energy$total) * 100 )
+  energy$percent_oil <- ifelse(energy$total == 0, 0.0, (energy$oil / energy$total) * 100)
+  energy$percent_gas <- ifelse(energy$total == 0, 0.0, (energy$gas / energy$total) * 100)
+  energy$percent_nuclear <- ifelse(energy$total == 0, 0.0, (energy$nuclear / energy$total) * 100)
+  energy$percent_hydro <- ifelse(energy$total == 0, 0.0, (energy$hydro / energy$total) * 100)
+  energy$percent_biomass <- ifelse(energy$total == 0, 0.0, (energy$biomass / energy$total) * 100)
+  energy$percent_wind <- ifelse(energy$total == 0, 0.0, (energy$wind / energy$total) * 100)
+  energy$percent_solar <- ifelse(energy$total == 0, 0.0, (energy$solar / energy$total) * 100)
+  energy$percent_geothermal <- ifelse(energy$total == 0, 0.0, (energy$geothermal / energy$total) * 100)
+  energy$percent_other <- ifelse(energy$total == 0, 0.0, (energy$other / energy$total) * 100)
 
-# Determine size groupings
-sml <- unname(quantile(subset(energy, energy$total > 0)$total))
-small <- sml[2:2]
-med <- sml[3:3]
-large <- sml[4:4]
+  energy$percent_renewable <- ifelse(energy$total == 0, 0.0, (energy$renewable / energy$total) * 100)
+  energy$percent_non_renewable <- ifelse(energy$total == 0, 0.0, (energy$non_renewable / energy$total) * 100)
 
-# Create marker sizes
-energy$marker_size <- sapply(energy$total, function(total) {
-    if (total >= large) { 20 }
-    else if (total >= med) { 15 }
-    else if (total >= small) { 10 }
-    else { 5 }
-})
 
-# Filter plants that don't generate any energy
-energy <- rbind( subset(energy, percent_renewable > 0), subset(energy, percent_non_renewable > 0) )
+  # Determine size groupings
+  sml <- unname(quantile(subset(energy, energy$total > 0)$total))
+  small <- sml[2:2]
+  med <- sml[3:3]
+  large <- sml[4:4]
 
-# NEED TO FIX -- Doesn't handle multiple energy sources
-energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.max)]
+  # Create marker sizes
+  energy$marker_size <- sapply(energy$total, function(total) {
+      if (total >= large) { 20 }
+      else if (total >= med) { 15 }
+      else if (total >= small) { 10 }
+      else { 5 }
+  })
+
+  # Filter plants that don't generate any energy
+  energy <- rbind( subset(energy, percent_renewable > 0), subset(energy, percent_non_renewable > 0) )
+
+  # NEED TO FIX -- Doesn't handle multiple energy sources
+  energy$dominant_source <- colnames(energy)[5:14][apply((energy)[5:14],1,which.max)]
+
+  energy
+}
+
+energy_2000 <- computeRows(energy_2000)
+energy_2010 <- computeRows(energy_2010)
+energy_2018 <- computeRows(energy_2018)
 
 # Filter for Illinois energy plants
-il_plants <- subset(energy, energy$state == "IL")
+il_plants <- subset(energy_2018, energy_2018$state == "IL")
 
 getColor <- function(plants) {
   res <- sapply(plants$dominant_source, function(dominant) {
@@ -101,6 +113,7 @@ ui <- fluidPage(
             checkboxInput("checkbox_other", "Other", FALSE),
             checkboxInput("checkbox_non_renewable", "Non renewable", FALSE),
             checkboxInput("checkbox_renewable", "Renewable", FALSE),
+            checkboxInput("link_sources", "Link energy sources", FALSE),
             actionButton("resetButton", "Reset Map")
           ),
           mainPanel(width=10,
@@ -163,20 +176,20 @@ ui <- fluidPage(
                   column(6,selectInput("yearSelect", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2000, width="100%"))
                 ),
                 leafletOutput("testMap", height="calc(100vh - 245px)"),
-                checkboxGroupInput(inputId="checkboxGroup",label="Test",inline=TRUE, width="100%", choices =
-                  c("All" = "checkbox_all",
-                    "Coal" = "checkbox_coal",
-                    "Oil" = "checkbox_oil",
-                    "Gas" = "checkbox_gas",
-                    "Nuclear" = "checkbox_nuclear",
-                    "Hydro" = "checkbox_hydro",
-                    "Biomass" = "checkbox_biomass",
-                    "Wind" = "checkbox_wind",
-                    "Solar" = "checkbox_solar",
-                    "Geothermal" = "checkbox_geothermal",
-                    "Other" = "checkbox_other",
-                    "Non renewable" = "checkbox_non_renewable",
-                    "Renewable" = "checkbox_renewable")
+                checkboxGroupInput(inputId="checkboxGroup1",label="Test",inline=TRUE, width="100%", selected="all", choices =
+                  c("All" = "all",
+                    "Coal" = "coal",
+                    "Oil" = "oil",
+                    "Gas" = "gas",
+                    "Nuclear" = "nuclear",
+                    "Hydro" = "hydro",
+                    "Biomass" = "biomass",
+                    "Wind" = "wind",
+                    "Solar" = "solar",
+                    "Geothermal" = "geothermal",
+                    "Other" = "other",
+                    "Non renewable" = "non_renewable",
+                    "Renewable" = "renewable")
                 )
               ),
               column(6,
@@ -237,20 +250,20 @@ ui <- fluidPage(
                   column(6,selectInput("yearSelect2", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2018, width="100%"))
                 ),
                 leafletOutput("testMap2", height="calc(100vh - 245px)"),
-                checkboxGroupInput(inputId="checkboxGroup",label="Test",inline=TRUE, width="100%", choices =
-                  c("All" = "checkbox_all",
-                    "Coal" = "checkbox_coal",
-                    "Oil" = "checkbox_oil",
-                    "Gas" = "checkbox_gas",
-                    "Nuclear" = "checkbox_nuclear",
-                    "Hydro" = "checkbox_hydro",
-                    "Biomass" = "checkbox_biomass",
-                    "Wind" = "checkbox_wind",
-                    "Solar" = "checkbox_solar",
-                    "Geothermal" = "checkbox_geothermal",
-                    "Other" = "checkbox_other",
-                    "Non renewable" = "checkbox_non_renewable",
-                    "Renewable" = "checkbox_renewable")
+                checkboxGroupInput(inputId="checkboxGroup2",label="Test",inline=TRUE, width="100%", selected="all", choices =
+                  c("All" = "all",
+                    "Coal" = "coal",
+                    "Oil" = "oil",
+                    "Gas" = "gas",
+                    "Nuclear" = "nuclear",
+                    "Hydro" = "hydro",
+                    "Biomass" = "biomass",
+                    "Wind" = "wind",
+                    "Solar" = "solar",
+                    "Geothermal" = "geothermal",
+                    "Other" = "other",
+                    "Non renewable" = "non_renewable",
+                    "Renewable" = "renewable")
                 )
               )
             )
@@ -269,89 +282,25 @@ server <- function(input, output, session) {
 
   # Reset button
   observeEvent(input$resetButton, {
-    updateCheckboxInput(
-      inputId = "checkbox_all",
-      session = session,
-      value = TRUE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_coal",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_oil",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_gas",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_nuclear",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_hydro",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_biomass",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_wind",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_solar",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_geothermal",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_other",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_non_renewable",
-      session = session,
-      value = FALSE
-    )
-    updateCheckboxInput(
-      inputId = "checkbox_renewable",
-      session = session,
-      value = FALSE
-    )
-  })
 
-  # Handle map marker colors
-  reactiveIcons <- reactive({
-    awesomeIcons(
-      icon = 'ios-close',
-      iconColor = 'black',
-      library = 'ion',
-      markerColor = getColor(activeEnergySources())
-    )
-  })
+    # Update checkboxes
+    updateCheckboxGroupInput(session, "checkboxGroup1", selected = "all")
+    updateCheckboxGroupInput(session, "checkboxGroup2", selected = "all")
 
-  reactiveIcons2 <- reactive({
-    awesomeIcons(
-      icon = 'ios-close',
-      iconColor = 'black',
-      library = 'ion',
-      markerColor = getColor(activeEnergySources2())
+    # Update year select
+    updateSelectInput(session, "yearSelect",
+      selected = 2000
+    )
+    updateSelectInput(session, "yearSelect2",
+      selected = 2018
+    )
+
+    # Update state select
+    updateSelectInput(session, "stateSelect1",
+      selected = "IL"
+    )
+    updateSelectInput(session, "stateSelect2",
+      selected = "IL"
     )
   })
 
@@ -360,130 +309,76 @@ server <- function(input, output, session) {
     active <- activeEnergySources()
     paste("<b>", active$plant_name, "</b>",
           "<br/>", active$dominant,"<br/>",
-          "Total capacity:" , active$total,"<br/>",
-          "Percent renewable:" , active$percent_renewable,"<br/>",
-          "Percent non-renewable:", active$percent_non_renewable)
+          "Total capacity:" , formatC(active$total, format="f", big.mark=",", digits=0), "<br/>",
+          "Percent renewable:" , format(active$percent_renewable, digits=2),"<br/>",
+          "Percent non-renewable:", format(active$percent_non_renewable, digits=2) )
   })
 
   determineLabel2 <- reactive({
     active <- activeEnergySources2()
     paste("<b>", active$plant_name, "</b>",
           "<br/>", active$dominant,"<br/>",
-          "Total capacity:" , active$total,"<br/>",
-          "Percent renewable:" , active$percent_renewable,"<br/>",
-          "Percent non-renewable:", active$percent_non_renewable)
+          "Total capacity:" , formatC(active$total, format="f", big.mark=",", digits=0), "<br/>",
+          "Percent renewable:" , format(active$percent_renewable, digits=2),"<br/>",
+          "Percent non-renewable:", format(active$percent_non_renewable, digits=2) )
   })
 
   # Handle filtering of energy types
   activeEnergySources <- reactive({
-    selectedState <- subset(energy, energy$state == input$stateSelect1)
+    if (input$yearSelect == 2000) {
+      selectedState <- subset(energy_2000, energy_2000$state == input$stateSelect1)
+    }
+    if (input$yearSelect == 2010) {
+      selectedState <- subset(energy_2010, energy_2010$state == input$stateSelect1)
+    }
+    if (input$yearSelect == 2018) {
+      selectedState <- subset(energy_2018, energy_2018$state == input$stateSelect1)
+    }
+
     toReturn <- NULL
 
-    if (input$checkbox_all) {
+    if ('all' %in% input$checkboxGroup1) {
       toReturn <- selectedState
     }
     else {
-      if (input$checkbox_coal) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
+      if ('non_renewable' %in% input$checkboxGroup1) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("coal","oil","gas","nuclear"), ])
       }
-      if (input$checkbox_oil) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
+      if ('renewable' %in% input$checkboxGroup1) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("hydro","biomass","wind","solar","geothermal","other"), ])
       }
-      if (input$checkbox_gas) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
-      }
-      if (input$checkbox_nuclear) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
-      }
-      if (input$checkbox_hydro) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
-      }
-      if (input$checkbox_biomass) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
-      }
-      if (input$checkbox_wind) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
-      }
-      if (input$checkbox_solar) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
-      }
-      if (input$checkbox_geothermal) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
-      }
-      if (input$checkbox_other) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
-      }
-      if (input$checkbox_non_renewable) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
-      }
-      if (input$checkbox_renewable) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
-      }
+
+      toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% input$checkboxGroup1, ])
     }
 
     toReturn
   })
 
   activeEnergySources2 <- reactive({
-    selectedState <- subset(energy, energy$state == input$stateSelect2)
+    if (input$yearSelect2 == 2000) {
+      selectedState <- subset(energy_2000, energy_2000$state == input$stateSelect2)
+    }
+    if (input$yearSelect2 == 2010) {
+      selectedState <- subset(energy_2010, energy_2010$state == input$stateSelect2)
+    }
+    if (input$yearSelect2 == 2018) {
+      selectedState <- subset(energy_2018, energy_2018$state == input$stateSelect2)
+    }
+
     toReturn <- NULL
 
-    if (input$checkbox_all) {
+    if ('all' %in% input$checkboxGroup2) {
       toReturn <- selectedState
     }
     else {
-      if (input$checkbox_coal) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
+      if ('non_renewable' %in% input$checkboxGroup2) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("coal","oil","gas","nuclear"), ])
       }
-      if (input$checkbox_oil) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
+      if ('renewable' %in% input$checkboxGroup2) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("hydro","biomass","wind","solar","geothermal","other"), ])
       }
-      if (input$checkbox_gas) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
-      }
-      if (input$checkbox_nuclear) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
-      }
-      if (input$checkbox_hydro) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
-      }
-      if (input$checkbox_biomass) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
-      }
-      if (input$checkbox_wind) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
-      }
-      if (input$checkbox_solar) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
-      }
-      if (input$checkbox_geothermal) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
-      }
-      if (input$checkbox_other) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
-      }
-      if (input$checkbox_non_renewable) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "coal"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "oil"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "gas"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "nuclear"))
-      }
-      if (input$checkbox_renewable) {
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "hydro"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "biomass"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "wind"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "solar"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "geothermal"))
-        toReturn <- rbind(toReturn, subset(selectedState, selectedState$dominant_source == "other"))
-      }
+
+      toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% input$checkboxGroup2, ])
     }
 
     toReturn
@@ -506,12 +401,6 @@ server <- function(input, output, session) {
         popup=determineLabel(),
         stroke = TRUE, fillOpacity = 0.75
       ) %>%
-      # addAwesomeMarkers(data=activeEnergySources(),
-      #   lng=~plant_longitude,
-      #   lat=~plant_latitude,
-      #   icon=reactiveIcons(),
-      #   popup=determineLabel()
-      # ) %>%
       addLegend("bottomright",
           pal = pal,
           values = names(il_plants)[5:14],
@@ -540,12 +429,6 @@ server <- function(input, output, session) {
         popup=determineLabel2(),
         stroke = TRUE, fillOpacity = 0.75
       ) %>%
-      # addAwesomeMarkers(data=activeEnergySources2(),
-      #   lng=~plant_longitude,
-      #   lat=~plant_latitude,
-      #   icon=reactiveIcons2(),
-      #   popup=determineLabel2()
-      # ) %>%
       addLegend("bottomright",
           pal = pal,
           values = names(il_plants)[5:14],
