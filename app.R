@@ -48,10 +48,11 @@ computeRows <- function(energy) {
 
   # Create marker sizes
   energy$marker_size <- sapply(energy$total, function(total) {
-      if (total >= large) { 20 }
-      else if (total >= med) { 15 }
+      if      (total >= large) { 20 }
+      else if (total >= med)   { 15 }
       else if (total >= small) { 10 }
-      else { 5 }
+      else if (total >  0)     { 5 }
+      else { 1 }
   })
 
   # Filter plants that don't generate any energy
@@ -97,26 +98,7 @@ ui <- fluidPage(
     lang="en",
     p(),
     navbarPage("Project 2", position = c("static-top"), collapsible = FALSE, fluid = TRUE,
-      tabPanel("Map",
-        sidebarLayout(
-          sidebarPanel(width=2,
-            checkboxInput("checkbox_all", "All", TRUE),
-            checkboxInput("checkbox_coal", "Coal", FALSE),
-            checkboxInput("checkbox_oil", "Oil", FALSE),
-            checkboxInput("checkbox_gas", "Gas", FALSE),
-            checkboxInput("checkbox_nuclear", "Nuclear", FALSE),
-            checkboxInput("checkbox_hydro", "Hydro", FALSE),
-            checkboxInput("checkbox_biomass", "Biomass", FALSE),
-            checkboxInput("checkbox_wind", "Wind", FALSE),
-            checkboxInput("checkbox_solar", "Solar", FALSE),
-            checkboxInput("checkbox_geothermal", "Geothermal", FALSE),
-            checkboxInput("checkbox_other", "Other", FALSE),
-            checkboxInput("checkbox_non_renewable", "Non renewable", FALSE),
-            checkboxInput("checkbox_renewable", "Renewable", FALSE),
-            checkboxInput("link_sources", "Link energy sources", FALSE),
-            actionButton("resetButton", "Reset Map")
-          ),
-          mainPanel(width=10,
+      tabPanel("Compare States",
             fluidPage(
               column(6,
                 fluidRow(column(6,
@@ -173,10 +155,11 @@ ui <- fluidPage(
                   "Wyoming" = "WY",
                   "Washington DC" = "DC"),
                   selected="IL")),
-                  column(6,selectInput("yearSelect", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2000, width="100%"))
+                  column(6,selectInput("yearSelect", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2000, width="100%")),
                 ),
                 leafletOutput("testMap", height="calc(100vh - 245px)"),
-                checkboxGroupInput(inputId="checkboxGroup1",label="Test",inline=TRUE, width="100%", selected="all", choices =
+                absolutePanel(top = 90, left=25, actionButton("resetButton1", "Reset Map")),
+                checkboxGroupInput(inputId="checkboxGroup1",label="Energy Sources",inline=TRUE, width="100%", selected="all", choices =
                   c("All" = "all",
                     "Coal" = "coal",
                     "Oil" = "oil",
@@ -250,7 +233,8 @@ ui <- fluidPage(
                   column(6,selectInput("yearSelect2", "Year", c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2018, width="100%"))
                 ),
                 leafletOutput("testMap2", height="calc(100vh - 245px)"),
-                checkboxGroupInput(inputId="checkboxGroup2",label="Test",inline=TRUE, width="100%", selected="all", choices =
+                absolutePanel(top = 90, left=25, actionButton("resetButton2", "Reset Map")),
+                checkboxGroupInput(inputId="checkboxGroup2",label="Energy Sources",inline=TRUE, width="100%", selected="all", choices =
                   c("All" = "all",
                     "Coal" = "coal",
                     "Oil" = "oil",
@@ -267,6 +251,31 @@ ui <- fluidPage(
                 )
               )
             )
+        ),
+      tabPanel("Country Overview",
+        fluidPage(
+          sidebarLayout(
+            sidebarPanel(width=2,
+              checkboxGroupInput(inputId="checkboxGroup3",label=h4("Select Energy Source"),inline=FALSE, choices =
+                c("All" = "all",
+                  "Coal" = "coal",
+                  "Oil" = "oil",
+                  "Gas" = "gas",
+                  "Nuclear" = "nuclear",
+                  "Hydro" = "hydro",
+                  "Biomass" = "biomass",
+                  "Wind" = "wind",
+                  "Solar" = "solar",
+                  "Geothermal" = "geothermal",
+                  "Other" = "other",
+                  "Non renewable" = "non_renewable",
+                  "Renewable" = "renewable")
+              ),
+              sliderInput("energySlider", h4("Generation Range (MWh):"), min = 0, max = max(energy_2018$total), value = c(0, max(energy_2018$total))),
+              selectInput("yearSelect3", h4("Year"), c("2000" = 2000, "2010" = 2010, "2018" = 2018), selected=2018, width="100%"),
+              actionButton("resetButton3", "Reset Map")
+            ),
+            mainPanel(leafletOutput("testMap3", height="calc(100vh - 90px)"), width=10)
           )
         )
       ),
@@ -281,26 +290,49 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   # Reset button
-  observeEvent(input$resetButton, {
-
-    # Update checkboxes
+  observeEvent(input$resetButton1, {
+    # Update checkboxe
     updateCheckboxGroupInput(session, "checkboxGroup1", selected = "all")
-    updateCheckboxGroupInput(session, "checkboxGroup2", selected = "all")
 
     # Update year select
     updateSelectInput(session, "yearSelect",
       selected = 2000
-    )
-    updateSelectInput(session, "yearSelect2",
-      selected = 2018
     )
 
     # Update state select
     updateSelectInput(session, "stateSelect1",
       selected = "IL"
     )
+  })
+
+  observeEvent(input$resetButton2, {
+    # Update checkboxe
+    updateCheckboxGroupInput(session, "checkboxGroup2", selected = "all")
+
+    # Update year select
+    updateSelectInput(session, "yearSelect2",
+      selected = 2018
+    )
+
+    # Update state select
     updateSelectInput(session, "stateSelect2",
       selected = "IL"
+    )
+  })
+
+  observeEvent(input$resetButton3, {
+    # Update checkboxe
+    updateCheckboxGroupInput(session, "checkboxGroup3", selected = "")
+
+    updateSliderInput(session, "energySlider",
+        min = 0,
+        max = max(energy_2018$total),
+        value = c(0, max(energy_2018$total))
+      )
+
+    # Update year select
+    updateSelectInput(session, "yearSelect3",
+      selected = 2018
     )
   })
 
@@ -316,6 +348,15 @@ server <- function(input, output, session) {
 
   determineLabel2 <- reactive({
     active <- activeEnergySources2()
+    paste("<b>", active$plant_name, "</b>",
+          "<br/>", active$dominant,"<br/>",
+          "Total capacity:" , formatC(active$total, format="f", big.mark=",", digits=0), "<br/>",
+          "Percent renewable:" , format(active$percent_renewable, digits=2),"<br/>",
+          "Percent non-renewable:", format(active$percent_non_renewable, digits=2) )
+  })
+
+  determineLabel3 <- reactive({
+    active <- activeEnergySources3()
     paste("<b>", active$plant_name, "</b>",
           "<br/>", active$dominant,"<br/>",
           "Total capacity:" , formatC(active$total, format="f", big.mark=",", digits=0), "<br/>",
@@ -384,14 +425,60 @@ server <- function(input, output, session) {
     toReturn
   })
 
-  # Create map
+  activeEnergySources3 <- reactive({
+    if (input$yearSelect3 == 2000) {
+      selectedState <- energy_2000
+
+      updateSliderInput(session, "energySlider",
+        min = 0,
+        max = max(energy_2000$total)
+      )
+    }
+    if (input$yearSelect3 == 2010) {
+      selectedState <- energy_2010
+
+      updateSliderInput(session, "energySlider",
+        min = 0,
+        max = max(energy_2010$total)
+      )
+    }
+    if (input$yearSelect3 == 2018) {
+      selectedState <- energy_2018
+
+      updateSliderInput(session, "energySlider",
+        min = 0,
+        max = max(energy_2018$total)
+      )
+    }
+
+    toReturn <- NULL
+
+    if ('all' %in% input$checkboxGroup3) {
+      toReturn <- selectedState
+    }
+    else {
+      if ('non_renewable' %in% input$checkboxGroup3) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("coal","oil","gas","nuclear"), ])
+      }
+      if ('renewable' %in% input$checkboxGroup3) {
+        toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% c("hydro","biomass","wind","solar","geothermal","other"), ])
+      }
+
+      toReturn <- rbind(toReturn, selectedState[selectedState$dominant_source %in% input$checkboxGroup3, ])
+    }
+
+    # toReturn
+    subset(toReturn, total >= input$energySlider[1] & total <= input$energySlider[2])
+  })
+
+  # Create maps
   output$testMap <- renderLeaflet({
     leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
       addProviderTiles(providers$OpenStreetMap.Mapnik,
         options = providerTileOptions(noWrap = TRUE)
       ) %>%
-      addProviderTiles(providers$Esri.DeLorme, group = "Esri DeLorme") %>%
-      addProviderTiles(providers$TomTom.Hybrid, group = "TomTom Hybrid") %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri WorldTopoMap") %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Esri WorldGrayCanvas") %>%
       addCircleMarkers(
         data=activeEnergySources(),
         radius=~marker_size,
@@ -408,7 +495,7 @@ server <- function(input, output, session) {
           opacity = 1
       ) %>%
       addLayersControl(
-        baseGroups = c("OSM", "Esri DeLorme", "TomTom Hybrid"),
+        baseGroups = c("OSM", "Esri WorldTopoMap", "Esri WorldGrayCanvas"),
         options = layersControlOptions(collapsed = FALSE)
       )
   })
@@ -418,8 +505,8 @@ server <- function(input, output, session) {
       addProviderTiles(providers$OpenStreetMap.Mapnik,
         options = providerTileOptions(noWrap = TRUE)
       ) %>%
-      addProviderTiles(providers$Esri.DeLorme, group = "Esri DeLorme") %>%
-      addProviderTiles(providers$TomTom.Hybrid, group = "TomTom Hybrid") %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri WorldTopoMap") %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Esri WorldGrayCanvas") %>%
       addCircleMarkers(
         data=activeEnergySources2(),
         radius=~marker_size,
@@ -436,10 +523,40 @@ server <- function(input, output, session) {
           opacity = 1
       ) %>%
       addLayersControl(
-        baseGroups = c("OSM", "Esri DeLorme", "TomTom Hybrid"),
+        baseGroups = c("OSM", "Esri WorldTopoMap", "Esri WorldGrayCanvas"),
         options = layersControlOptions(collapsed = FALSE)
       )
   })
+
+  output$testMap3 <- renderLeaflet({
+    leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik,
+        options = providerTileOptions(noWrap = TRUE)
+      ) %>%
+      addProviderTiles(providers$Esri.WorldTopoMap, group = "Esri WorldTopoMap") %>%
+      addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Esri WorldGrayCanvas") %>%
+      addCircleMarkers(
+        data=activeEnergySources3(),
+        radius=~marker_size,
+        lng=~plant_longitude,
+        lat=~plant_latitude,
+        color = ~pal(dominant_source),
+        popup=determineLabel3(),
+        stroke = TRUE, fillOpacity = 0.75
+      ) %>%
+      addLegend("bottomright",
+          pal = pal,
+          values = names(il_plants)[5:14],
+          title = "Energy Source",
+          opacity = 1
+      ) %>%
+      addLayersControl(
+        baseGroups = c("OSM", "Esri WorldTopoMap", "Esri WorldGrayCanvas"),
+        options = layersControlOptions(collapsed = FALSE)
+      )
+  })
+
+  output$rangeOutput <- renderPrint({rangeLabel()})
 
   # About page
   output$name <- renderPrint({
