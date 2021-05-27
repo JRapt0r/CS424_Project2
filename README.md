@@ -1,6 +1,8 @@
 # Visualizing Energy Usage in the United States - Part 2: Geography
 
-[Part 1](https://github.com/JRapt0r/CS424_Project1)
+Visualizing how state boundaries relate to the location of energy plants and examining how geographic as well as political boundaries affect coal / gas / solar / hydro energy production in the United States. Part two in a series of visualizations looking at energy usage in the United States.
+
+[Part 1](https://github.com/JRapt0r/CS424_Project1) / Part 2 / [Part 3](https://github.com/JRapt0r/CS424_Project3)
 
 <p align="center">
   <a href="https://jrepta2.shinyapps.io/CS424_Project2/" target="_blank">
@@ -11,5 +13,3 @@
     Live Visualization
   </a>
 </p>
-
-Visualizing state boundaries to look at the actual locations of the different plants and allow us to see how geographic as well as political boundaries affect coal / gas / solar / hydro / etc energy production in the US. Part two of a series of visualizations looking at energy usage in the United States. 
